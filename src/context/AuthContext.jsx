@@ -131,7 +131,7 @@ export function AuthProvider({ children }) {
       provider: 'discord',
       options: {
         scopes: 'identify email',
-        redirectTo: window.location.origin,
+        redirectTo: 'https://fidelisclan.netlify.app',
       },
     })
     if (error) console.error('Discord login error:', error)
