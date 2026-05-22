@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchDiscordRole, getDiscordUserInfo } from '../lib/discord'
 
@@ -8,38 +8,45 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [userInfo, setUserInfo] = useState(null)
-  const [discordNickname, setDiscordNickname] = useState(null) // in-game name from Discord
+  const [discordNickname, setDiscordNickname] = useState(null)
   const [loading, setLoading] = useState(true)
   const [roleLoading, setRoleLoading] = useState(false)
+  const resolvedRef = useRef(false) // prevent multiple resolveRole calls
 
- useEffect(() => {
-  // Listen for auth changes FIRST before getting session
-  // This ensures we catch the token from the URL hash on mobile
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    setSession(session)
-    if (session) resolveRole(session)
-  } else if (event === 'SIGNED_OUT') {
-    setSession(null)
-    setUserRole(null)
-    setUserInfo(null)
-    setDiscordNickname(null)
-    setLoading(false)
-  }
-})
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        setSession(session)
+        if (!resolvedRef.current) {
+          resolvedRef.current = true
+          resolveRole(session)
+        }
+      } else if (event === 'SIGNED_OUT') {
+        resolvedRef.current = false
+        setSession(null)
+        setUserRole(null)
+        setUserInfo(null)
+        setDiscordNickname(null)
+        setLoading(false)
+      } else if (event === 'TOKEN_REFRESHED') {
+        setSession(session)
+      }
+    })
 
-  // Then get existing session
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-      setSession(session)
-      resolveRole(session)
-    } else {
-      setLoading(false)
-    }
-  })
+    // Then check for existing session (page reload)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !resolvedRef.current) {
+        resolvedRef.current = true
+        setSession(session)
+        resolveRole(session)
+      } else if (!session) {
+        setLoading(false)
+      }
+    })
 
-  return () => subscription.unsubscribe()
-}, [])
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function resolveRole(session) {
     setRoleLoading(true)
@@ -47,31 +54,7 @@ export function AuthProvider({ children }) {
     setUserInfo(info)
 
     console.log('Discord user ID:', info.discordId)
-    /*
-    // Check cached role in Supabase (valid for 5 min)
-    try {
-      const { data: existing } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single()
 
-      if (existing) {
-        const age = Date.now() - new Date(existing.updated_at).getTime()
-        if (age < 5 * 60 * 1000) {
-          console.log('Using cached role:', existing.role)
-          setUserRole(existing.role)
-          if (existing.ingame_name) setDiscordNickname(existing.ingame_name)
-          setRoleLoading(false)
-          setLoading(false)
-          return
-        }
-      }
-    } catch (e) {
-      // No cached role yet
-    }
-    */
-    // Fetch fresh role + nickname from Discord via Netlify function
     let role = 'denied'
     let nickname = null
 
@@ -110,7 +93,7 @@ export function AuthProvider({ children }) {
       console.warn('Could not cache role:', e)
     }
 
-    // Auto-link Discord ID to member record by matching nickname
+    // Auto-link Discord ID to member record
     if (nickname && info.discordId) {
       try {
         const { data: memberRows } = await supabase
@@ -146,6 +129,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    resolvedRef.current = false
     await supabase.auth.signOut()
   }
 
