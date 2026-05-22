@@ -1,8 +1,32 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchDiscordRole, getDiscordUserInfo } from '../lib/discord'
+import { getDiscordUserInfo } from '../lib/discord'
 
 const AuthContext = createContext(null)
+const ROLE_CACHE_KEY = 'fidelis_role_cache'
+
+function getRoleCache(userId) {
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY)
+    if (!raw) return null
+    const cache = JSON.parse(raw)
+    if (cache.userId !== userId) return null
+    if (Date.now() - cache.timestamp > 30 * 60 * 1000) return null
+    return cache
+  } catch { return null }
+}
+
+function setRoleCache(userId, role, nickname) {
+  try {
+    localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({
+      userId, role, nickname, timestamp: Date.now()
+    }))
+  } catch {}
+}
+
+function clearRoleCache() {
+  try { localStorage.removeItem(ROLE_CACHE_KEY) } catch {}
+}
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
@@ -11,50 +35,58 @@ export function AuthProvider({ children }) {
   const [discordNickname, setDiscordNickname] = useState(null)
   const [loading, setLoading] = useState(true)
   const [roleLoading, setRoleLoading] = useState(false)
-  const resolvedRef = useRef(false) // prevent multiple resolveRole calls
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+    async function init() {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession()
+
       if (session) {
         setSession(session)
-        resolveRole(session)
-      } else if (event === 'INITIAL_SESSION') {
+        await resolveRole(session)
+      } else {
         setLoading(false)
       }
-      } else if (event === 'SIGNED_OUT') {
-        resolvedRef.current = false
-        setSession(null)
-        setUserRole(null)
-        setUserInfo(null)
-        setDiscordNickname(null)
-        setLoading(false)
-      } else if (event === 'TOKEN_REFRESHED') {
-        setSession(session)
-      }
-    })
 
-    // Then check for existing session (page reload)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !resolvedRef.current) {
-        resolvedRef.current = true
-        setSession(session)
-        resolveRole(session)
-      } else if (!session) {
-        setLoading(false)
-      }
-    })
+      // Listen for future auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth event:', event)
+        if (event === 'SIGNED_IN') {
+          setSession(session)
+          await resolveRole(session)
+        } else if (event === 'SIGNED_OUT') {
+          clearRoleCache()
+          setSession(null)
+          setUserRole(null)
+          setUserInfo(null)
+          setDiscordNickname(null)
+          setLoading(false)
+        }
+      })
 
-    return () => subscription.unsubscribe()
+      return () => subscription.unsubscribe()
+    }
+
+    init()
   }, [])
 
   async function resolveRole(session) {
-    setRoleLoading(true)
     const info = getDiscordUserInfo(session)
     setUserInfo(info)
 
-    console.log('Discord user ID:', info.discordId)
+    // Check localStorage cache first
+    const cached = getRoleCache(session.user.id)
+    if (cached) {
+      console.log('Using cached role:', cached.role)
+      setUserRole(cached.role)
+      setDiscordNickname(cached.nickname)
+      setLoading(false)
+      return
+    }
+
+    // No cache — fetch from Discord
+    setRoleLoading(true)
+    console.log('Fetching role for Discord ID:', info.discordId)
 
     let role = 'denied'
     let nickname = null
@@ -77,6 +109,8 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // Cache role in localStorage
+    setRoleCache(session.user.id, role, nickname)
     setUserRole(role)
     setDiscordNickname(nickname)
 
@@ -91,7 +125,7 @@ export function AuthProvider({ children }) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
     } catch (e) {
-      console.warn('Could not cache role:', e)
+      console.warn('Could not cache role in Supabase:', e)
     }
 
     // Auto-link Discord ID to member record
@@ -110,7 +144,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (e) {
-        console.warn('Could not link Discord ID to member:', e)
+        console.warn('Could not link Discord ID:', e)
       }
     }
 
@@ -130,7 +164,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    resolvedRef.current = false
+    clearRoleCache()
     await supabase.auth.signOut()
   }
 

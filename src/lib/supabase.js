@@ -7,7 +7,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Check your .env file.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // PKCE flow is more reliable on mobile browsers
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+})
 
 export const DISCORD_SERVER_ID = import.meta.env.VITE_DISCORD_SERVER_ID
 export const DISCORD_ADMIN_ROLE = import.meta.env.VITE_DISCORD_ADMIN_ROLE || 'Admiral'
