@@ -15,16 +15,18 @@ export function AuthProvider({ children }) {
  useEffect(() => {
   // Listen for auth changes FIRST before getting session
   // This ensures we catch the token from the URL hash on mobile
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
     setSession(session)
     if (session) resolveRole(session)
-    else {
-      setUserRole(null)
-      setUserInfo(null)
-      setDiscordNickname(null)
-      setLoading(false)
-    }
-  })
+  } else if (event === 'SIGNED_OUT') {
+    setSession(null)
+    setUserRole(null)
+    setUserInfo(null)
+    setDiscordNickname(null)
+    setLoading(false)
+  }
+})
 
   // Then get existing session
   supabase.auth.getSession().then(({ data: { session } }) => {
