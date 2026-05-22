@@ -12,26 +12,32 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [roleLoading, setRoleLoading] = useState(false)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session) resolveRole(session)
-      else setLoading(false)
-    })
+ useEffect(() => {
+  // Listen for auth changes FIRST before getting session
+  // This ensures we catch the token from the URL hash on mobile
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    setSession(session)
+    if (session) resolveRole(session)
+    else {
+      setUserRole(null)
+      setUserInfo(null)
+      setDiscordNickname(null)
+      setLoading(false)
+    }
+  })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  // Then get existing session
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
       setSession(session)
-      if (session) resolveRole(session)
-      else {
-        setUserRole(null)
-        setUserInfo(null)
-        setDiscordNickname(null)
-        setLoading(false)
-      }
-    })
+      resolveRole(session)
+    } else {
+      setLoading(false)
+    }
+  })
 
-    return () => subscription.unsubscribe()
-  }, [])
+  return () => subscription.unsubscribe()
+}, [])
 
   async function resolveRole(session) {
     setRoleLoading(true)
