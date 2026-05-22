@@ -15,13 +15,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      if (session) {
         setSession(session)
-        if (!resolvedRef.current) {
-          resolvedRef.current = true
-          resolveRole(session)
-        }
+        resolveRole(session)
+      } else if (event === 'INITIAL_SESSION') {
+        setLoading(false)
+      }
       } else if (event === 'SIGNED_OUT') {
         resolvedRef.current = false
         setSession(null)
