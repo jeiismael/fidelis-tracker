@@ -133,8 +133,17 @@ export function AppProvider({ children }) {
 
   // Generate a check-in code for an event (expires in 1 hour)
   async function generateCheckinCode(eventId) {
-    const prefix = ['SIEGE', 'BOSS', 'RAID', 'WAR', 'GUILD'][Math.floor(Math.random() * 5)]
-    const code = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`
+  const event = events.find(e => e.id === eventId)
+  const prefixMap = {
+    'World Boss': 'WB',
+    "Sindri's Island": 'SI',
+    'Server Battle': 'SB',
+    'Clan Sanctuary': 'CS',
+    'Clan Battle': 'CB',
+    'Special Event': 'SE',
+  }
+  const prefix = prefixMap[event?.type] || 'EV'
+  const code = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`
     const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
     const { error } = await supabase.from('events')
       .update({ checkin_code: code, checkin_expires_at: expires })
