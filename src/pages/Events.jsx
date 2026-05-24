@@ -63,16 +63,25 @@ export default function Events() {
   }
 
   async function openGenerateCode(evId) {
-    setSelectedEvId(evId)
-    setGeneratedCode(null)
-    setCopied(false)
-    setModal('generate-code')
-    // Auto-generate on open
-    setBusy(true)
-    const code = await generateCheckinCode(evId)
-    setGeneratedCode(code)
-    setBusy(false)
+  setSelectedEvId(evId)
+  setGeneratedCode(null)
+  setCopied(false)
+  setModal('generate-code')
+
+  // Check if there's an active code for this event
+  const ev = events.find(e => e.id === evId)
+  if (ev?.checkin_code && ev?.checkin_expires_at && new Date(ev.checkin_expires_at) > new Date()) {
+    // Code still active — show it without generating a new one
+    setGeneratedCode(ev.checkin_code)
+    return
   }
+
+  // No active code — generate a new one
+  setBusy(true)
+  const code = await generateCheckinCode(evId)
+  setGeneratedCode(code)
+  setBusy(false)
+}
 
   async function handleCreate() {
     if (!form.name?.trim()) return
@@ -246,9 +255,22 @@ export default function Events() {
                 }}>
                   {generatedCode}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--amber)', fontFamily: 'Cinzel,serif', marginBottom: 16 }}>
-                  Expires in 1 hour
-                </div>
+                {(() => {
+  const ev = events.find(e => e.id === selectedEvId)
+  const isExisting = ev?.checkin_expires_at && new Date(ev.checkin_expires_at) > new Date()
+  return isExisting ? (
+    <>
+      <div style={{ marginBottom: 8 }}><CodeTimer expiresAt={ev.checkin_expires_at} /></div>
+      <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic', marginBottom: 16 }}>
+        A new code can only be generated after this one expires.
+      </div>
+    </>
+  ) : (
+    <div style={{ fontSize: 13, color: 'var(--amber)', fontFamily: 'Cinzel,serif', marginBottom: 16 }}>
+      Expires in 1 hour
+    </div>
+  )
+})()}
                 <button className="btn btn-gold" onClick={() => copyCode(generatedCode)}>
                   {copied ? '✓ Copied!' : 'Copy Code'}
                 </button>
