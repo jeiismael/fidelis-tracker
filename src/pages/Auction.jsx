@@ -106,7 +106,7 @@ export default function Auction() {
   const selectedItem = items.find(i => i.id === selectedItemId)
   const itemBids = selectedItemId ? bids.filter(b => b.item_id === selectedItemId) : []
   const topBidAmount = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
-  const minNext = Math.max(selectedItem?.min_bid || 0, topBidAmount + 1)
+  const minNext = Math.max(selectedItem?.min_bid || 0, topBidAmount + 10)
 
   return (
     <>
