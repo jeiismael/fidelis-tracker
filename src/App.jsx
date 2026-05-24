@@ -6,6 +6,7 @@ import Events from './pages/Events'
 import Auction from './pages/Auction'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
+import MyBids from './pages/MyBids'
 import AccessDenied from './pages/AccessDenied'
 import NotificationBell from './components/NotificationBell'
 
@@ -48,6 +49,7 @@ export default function App() {
     { id: 'roster', label: 'Roster' },
     { id: 'events', label: 'Events' },
     { id: 'auction', label: 'Auction' },
+    { id: 'mybids', label: 'My Bids' },
     ...(isAdmin ? [{ id: 'admin', label: '⚙ Admin' }] : []),
   ]
 
@@ -96,6 +98,7 @@ export default function App() {
           <Route path="/roster" element={<Roster />} />
           <Route path="/events" element={<Events />} />
           <Route path="/auction" element={<Auction />} />
+          <Route path="/mybids" element={<MyBids />} />
           {isAdmin && <Route path="/admin" element={<Admin />} />}
           <Route path="*" element={<Navigate to="/roster" replace />} />
         </Routes>
