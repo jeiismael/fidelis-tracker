@@ -6,7 +6,7 @@ import AuctionTimer from '../components/AuctionTimer'
 import { supabase } from '../lib/supabase'
 
 export default function Auction() {
-  const { items, bids, members, placeBid, endAuction, addItem } = useApp()
+  const { items, bids, members, placeBid, endAuction, addItem, showToast } = useApp()
   const { isAdmin, discordNickname } = useAuth()
   const [modal, setModal] = useState(null)
   const [selectedItemId, setSelectedItemId] = useState(null)
@@ -37,38 +37,40 @@ export default function Auction() {
   )
 
   function openAdd() {
-    setForm({ min_bid: 10, duration_ms: '3600000' })
+    setForm({ min_bid: 10, duration_ms: '86400000', quantity: 1 })
     setSelectedRegistryItem(null)
     setRegistrySearch('')
     setModal('add')
   }
 
   function openBid(id) {
-    setSelectedItemId(id)
-    setBidError('')
-    // Admins default to first member; regular members default to themselves
-    const defaultMember = isAdmin
-      ? (members[0]?.id || '')
-      : (myMember?.id || '')
-    setForm({ memberId: defaultMember, amount: '' })
-    setModal('bid')
-  }
+  setSelectedItemId(id)
+  setBidError('')
+  const defaultMember = myMember?.id || members[0]?.id || ''
+  setForm({ memberId: defaultMember, amount: '' })
+  setModal('bid')
+}
 
   function selectRegistryItem(item) { setSelectedRegistryItem(item) }
 
   async function handleAdd() {
-    if (!selectedRegistryItem) return
-    setBusy(true)
-    const ok = await addItem({
+  if (!selectedRegistryItem) return
+  setBusy(true)
+  const quantity = Math.max(1, Number(form.quantity) || 1)
+  const promises = Array.from({ length: quantity }, () =>
+    addItem({
       name: selectedRegistryItem.name,
       description: selectedRegistryItem.description || '',
       thumbnail_url: selectedRegistryItem.thumbnail_url || null,
-      min_bid: Number(form.min_bid) || 100,
+      min_bid: Number(form.min_bid) || 10,
       duration_ms: Number(form.duration_ms) || 0,
     })
-    setBusy(false)
-    if (ok) setModal(null)
-  }
+  )
+  await Promise.all(promises)
+  setBusy(false)
+  showToast(`${quantity} x "${selectedRegistryItem.name}" listed for auction`)
+  setModal(null)
+}
 
   async function handleBid() {
     setBidError('')
@@ -249,26 +251,36 @@ export default function Auction() {
           )}
 
           <div className="form-row">
-            <div className="form-group">
-              <label>Duration</label>
-              <select value={form.duration_ms} onChange={e => setForm(f => ({ ...f, duration_ms: e.target.value }))}>
-                <option value="300000">5 Minutes</option>
-                <option value="600000">10 Minutes</option>
-                <option value="1800000">30 Minutes</option>
-                <option value="3600000">1 Hour</option>
-                <option value="10800000">3 Hours</option>
-                <option value="21600000">6 Hours</option>
-                <option value="43200000">12 Hours</option>
-                <option value="86400000">24 Hours</option>
-                <option value="0">No Timer</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Min Bid (pts)</label>
-              <input type="number" value={form.min_bid} min={1}
-                onChange={e => setForm(f => ({ ...f, min_bid: e.target.value }))} />
-            </div>
-          </div>
+  <div className="form-group">
+    <label>Duration</label>
+    <select value={form.duration_ms} onChange={e => setForm(f => ({ ...f, duration_ms: e.target.value }))}>
+      <option value="300000">5 Minutes</option>
+      <option value="600000">10 Minutes</option>
+      <option value="1800000">30 Minutes</option>
+      <option value="3600000">1 Hour</option>
+      <option value="10800000">3 Hours</option>
+      <option value="21600000">6 Hours</option>
+      <option value="43200000">12 Hours</option>
+      <option value="86400000">24 Hours</option>
+      <option value="0">No Timer</option>
+    </select>
+  </div>
+  <div className="form-group">
+    <label>Min Bid (pts)</label>
+    <input type="number" value={form.min_bid} min={10}
+      onChange={e => setForm(f => ({ ...f, min_bid: e.target.value }))} />
+  </div>
+</div>
+<div className="form-group">
+  <label>Quantity</label>
+  <input
+    type="number"
+    value={form.quantity}
+    min={1}
+    max={20}
+    onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+  />
+</div>
           <button className="btn btn-gold btn-full" onClick={handleAdd} disabled={busy || !selectedRegistryItem}>
             {busy ? 'Listing…' : 'List for Auction'}
           </button>
