@@ -16,6 +16,7 @@ export default function Auction() {
   const [registry, setRegistry] = useState([])
   const [registrySearch, setRegistrySearch] = useState('')
   const [selectedRegistryItem, setSelectedRegistryItem] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (modal === 'add') loadRegistry()
@@ -100,8 +101,8 @@ export default function Auction() {
     return itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
   }
 
-  const activeItems = items.filter(i => i.status === 'active')
-  const endedItems = items.filter(i => i.status === 'ended')
+  const activeItems = items.filter(i => i.status === 'active' && i.name.toLowerCase().includes(search.toLowerCase()))
+  const endedItems = items.filter(i => i.status === 'ended' && i.name.toLowerCase().includes(search.toLowerCase()))
   const selectedItem = items.find(i => i.id === selectedItemId)
   const itemBids = selectedItemId ? bids.filter(b => b.item_id === selectedItemId) : []
   const topBidAmount = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
@@ -110,9 +111,17 @@ export default function Auction() {
   return (
     <>
       <div className="section-header">
-        <div className="section-title">⚔ Auction House</div>
-        {isAdmin && <button className="btn btn-gold btn-sm" onClick={openAdd}>+ List Item</button>}
-      </div>
+  <div className="section-title">⚔ Auction House</div>
+  {isAdmin && <button className="btn btn-gold btn-sm" onClick={openAdd}>+ List Item</button>}
+</div>
+<div style={{ marginBottom: 20 }}>
+  <input
+    value={search}
+    onChange={e => setSearch(e.target.value)}
+    placeholder="Search auctions..."
+    style={{ width: 260, fontSize: 15 }}
+  />
+</div>
 
       {/* Non-admin with no matched member record */}
       {!isAdmin && !myMember && discordNickname && (
