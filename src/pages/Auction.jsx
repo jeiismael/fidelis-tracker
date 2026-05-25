@@ -92,8 +92,8 @@ export default function Auction() {
   }
 
   const handleExpired = useCallback(async (itemId) => {
-    await supabase.from('items').update({ status: 'ended' }).eq('id', itemId)
-  }, [])
+  await endAuction(itemId)
+}, [endAuction])
 
   function getTopBid(itemId) {
     const itemBids = bids.filter(b => b.item_id === itemId)

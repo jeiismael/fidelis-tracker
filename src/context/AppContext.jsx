@@ -360,32 +360,54 @@ export function AppProvider({ children }) {
     const minNext = Math.max(item.min_bid || 0, topBid + 10)
 
     if (amount < minNext) return { ok: false, msg: `Minimum bid is ${minNext.toLocaleString()} pts` }
-    if (member.points < amount) return { ok: false, msg: `${member.name} only has ${member.points.toLocaleString()} pts` }
 
-    // Refund previous top bidder and notify them
-    if (itemBids.length) {
-      const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
-      if (topBidEntry.member_id !== memberId) {
-        const prevMember = members.find(m => m.id === topBidEntry.member_id)
-        if (prevMember) {
-          await supabase.from('members')
-            .update({ points: prevMember.points + topBidEntry.amount })
-            .eq('id', prevMember.id)
+// Prevent top bidder from bidding again
+if (itemBids.length) {
+  const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
+  if (topBidEntry.member_id === memberId) {
+    return { ok: false, msg: `${member.name} is already the highest bidder.` }
+  }
+}
 
-          // Notify outbid member
-          await notifyMember(
-            prevMember.id,
-            '⚠ You\'ve been outbid!',
-            `${member.name} outbid you on "${item.name}" with ${amount.toLocaleString()} pts. Your ${topBidEntry.amount.toLocaleString()} pts have been refunded.`,
-            'outbid',
-            `⚠ You've been outbid on **${item.name}**! **${member.name}** bid **${amount.toLocaleString()} pts**. Your **${topBidEntry.amount.toLocaleString()} pts** have been refunded. Bid higher to reclaim the top spot!`
-          )
-        }
-      }
+if (member.points < amount) return { ok: false, msg: `${member.name} only has ${member.points.toLocaleString()} pts` }
+
+   // Refund previous top bidder and notify them
+if (itemBids.length) {
+  const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
+  if (topBidEntry.member_id !== memberId) {
+    // Fetch fresh points from DB to avoid stale state
+    const { data: freshPrevMember } = await supabase
+      .from('members')
+      .select('*')
+      .eq('id', topBidEntry.member_id)
+      .single()
+
+    if (freshPrevMember) {
+      await supabase.from('members')
+        .update({ points: freshPrevMember.points + topBidEntry.amount })
+        .eq('id', freshPrevMember.id)
+
+      // Notify outbid member
+      await notifyMember(
+        freshPrevMember.id,
+        '⚠ You\'ve been outbid!',
+        `${member.name} outbid you on "${item.name}" with ${amount.toLocaleString()} pts. Your ${topBidEntry.amount.toLocaleString()} pts have been refunded.`,
+        'outbid',
+        `⚠ You've been outbid on **${item.name}**! **${member.name}** bid **${amount.toLocaleString()} pts**. Your **${topBidEntry.amount.toLocaleString()} pts** have been refunded. Bid higher to reclaim the top spot!`
+      )
     }
+  }
+}
 
-    // Deduct points from bidder
-    await supabase.from('members').update({ points: member.points - amount }).eq('id', memberId)
+   // Fetch fresh points before deducting to avoid stale state
+const { data: freshMember } = await supabase
+  .from('members')
+  .select('points')
+  .eq('id', memberId)
+  .single()
+
+const currentPoints = freshMember?.points ?? member.points
+await supabase.from('members').update({ points: currentPoints - amount }).eq('id', memberId)
 
     // Insert bid
     const { error } = await supabase.from('bids').insert({ item_id: itemId, member_id: memberId, amount })
