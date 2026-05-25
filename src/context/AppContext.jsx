@@ -347,9 +347,18 @@ export function AppProvider({ children }) {
 
     const itemBids = bids.filter(b => b.item_id === itemId)
     const topBid = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
-    const minNext = Math.max(item.min_bid || 0, topBid + 1)
+    const minNext = Math.max(item.min_bid || 0, topBid + 10)
 
     if (amount < minNext) return { ok: false, msg: `Minimum bid is ${minNext.toLocaleString()} pts` }
+
+    // Prevent top bidder from bidding again
+    if (itemBids.length) {
+      const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
+      if (topBidEntry.member_id === memberId) {
+        return { ok: false, msg: `${member.name} is already the highest bidder.` }
+      }
+    }
+
     if (member.points < amount) return { ok: false, msg: `${member.name} only has ${member.points.toLocaleString()} pts` }
 
     // Refund previous top bidder and notify them
