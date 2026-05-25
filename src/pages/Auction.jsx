@@ -204,6 +204,15 @@ export default function Auction() {
                     <div style={{ fontSize: 20, color: 'var(--text-dim)' }}>{topBidder ? topBidder.name : 'No bids'}</div>
                   </div>
                   <div className="timer urgent" style={{ marginTop: 8 }}>Auction Ended</div>
+                    {isAdmin && (
+                      <button
+                        className="btn btn-red btn-sm"
+                        style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                        onClick={() => removeItem(item.id)}
+                      >
+                        Remove
+                      </button>
+                    )}
                 </div>
               )
             })}
