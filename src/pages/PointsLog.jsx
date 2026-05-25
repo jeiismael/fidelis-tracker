@@ -29,8 +29,10 @@ export default function PointsLog() {
   const { isAdmin, discordNickname } = useAuth()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedMember, setSelectedMember] = useState('all')
+  const [selectedMembers, setSelectedMembers] = useState([])
   const [selectedType, setSelectedType] = useState('all')
+  const [memberSearch, setMemberSearch] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
 
   const myMember = discordNickname
     ? members.find(m => m.name.toLowerCase() === discordNickname.toLowerCase())
@@ -60,10 +62,16 @@ export default function PointsLog() {
 
   // Filter logs
   const filtered = logs.filter(l => {
-    if (selectedType !== 'all' && l.type !== selectedType) return false
-    if (isAdmin && selectedMember !== 'all' && l.member_id !== selectedMember) return false
-    return true
-  })
+  if (selectedType !== 'all' && l.type !== selectedType) return false
+  if (isAdmin && selectedMembers.length > 0 && !selectedMembers.includes(l.member_id)) return false
+  return true
+})
+
+const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name))
+const searchedMembers = sortedMembers.filter(m =>
+  m.name.toLowerCase().includes(memberSearch.toLowerCase()) &&
+  !selectedMembers.includes(m.id)
+)
 
   if (!isAdmin && !myMember) {
     return <div className="empty-state" style={{ marginTop: 40 }}>Your character hasn't been enlisted yet. Contact your Admiral.</div>
@@ -81,22 +89,83 @@ export default function PointsLog() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        {isAdmin && (
-          <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ width: 180 }}>
-            <option value="all">All Members</option>
-            {[...members].sort((a,b) => a.name.localeCompare(b.name)).map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
+<div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+  {isAdmin && (
+    <div style={{ position: 'relative' }}>
+      {/* Selected member tags */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: selectedMembers.length > 0 ? 8 : 0 }}>
+        {selectedMembers.map(id => {
+          const m = members.find(x => x.id === id)
+          return m ? (
+            <span key={id} style={{
+              background: 'rgba(201,162,39,.15)', border: '1px solid var(--gold-dim)',
+              color: 'var(--gold2)', fontFamily: 'Cinzel,serif', fontSize: 11,
+              padding: '3px 8px', borderRadius: 2, display: 'inline-flex', alignItems: 'center', gap: 6,
+              letterSpacing: 1,
+            }}>
+              {m.name}
+              <span style={{ cursor: 'pointer', color: 'var(--text-dim)' }}
+                onClick={() => setSelectedMembers(prev => prev.filter(x => x !== id))}>✕</span>
+            </span>
+          ) : null
+        })}
+        {selectedMembers.length > 0 && (
+          <span style={{ cursor: 'pointer', fontSize: 11, color: 'var(--text-dim)', alignSelf: 'center', fontFamily: 'Cinzel,serif', letterSpacing: 1 }}
+            onClick={() => setSelectedMembers([])}>Clear all</span>
         )}
-        <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={{ width: 180 }}>
-          <option value="all">All Types</option>
-          {Object.entries(TYPE_CONFIG).map(([key, val]) => (
-            <option key={key} value={key}>{val.label}</option>
-          ))}
-        </select>
       </div>
+
+      {/* Search input */}
+      <div style={{ position: 'relative' }}>
+        <input
+          value={memberSearch}
+          onChange={e => { setMemberSearch(e.target.value); setShowDropdown(true) }}
+          onFocus={() => setShowDropdown(true)}
+          placeholder="Search members..."
+          style={{ width: 220 }}
+        />
+        {/* Dropdown */}
+        {showDropdown && searchedMembers.length > 0 && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setShowDropdown(false)} />
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, width: 220,
+              background: 'var(--surface)', border: '1px solid var(--gold-dim)',
+              borderRadius: 2, zIndex: 20, maxHeight: 200, overflowY: 'auto',
+              boxShadow: '0 4px 16px rgba(0,0,0,.5)', marginTop: 2,
+            }}>
+              {searchedMembers.map(m => (
+                <div key={m.id}
+                  onClick={() => {
+                    setSelectedMembers(prev => [...prev, m.id])
+                    setMemberSearch('')
+                    setShowDropdown(false)
+                  }}
+                  style={{
+                    padding: '8px 12px', cursor: 'pointer', fontSize: 14,
+                    borderBottom: '1px solid var(--border)',
+                    color: 'var(--text)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {m.name}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )}
+
+  <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={{ width: 180 }}>
+    <option value="all">All Types</option>
+    {Object.entries(TYPE_CONFIG).map(([key, val]) => (
+      <option key={key} value={key}>{val.label}</option>
+    ))}
+  </select>
+</div>
 
       {loading
         ? <div className="empty-state">Loading…</div>
