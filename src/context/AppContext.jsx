@@ -55,10 +55,10 @@ export function AppProvider({ children }) {
       .then(({ data }) => { if (data) setAttendance(data) })
   }, [])
 
-  const handleEventsChange = useCallback(async () => {
-  const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false })
-  if (data) setEvents(data)
-}, [])
+  const handleEventsChange = useCallback(() => {
+    supabase.from('events').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setEvents(data) })
+  }, [])
 
   useRealtime('members', handleMembersChange)
   useRealtime('bids', handleBidsChange)
@@ -94,15 +94,22 @@ export function AppProvider({ children }) {
     return true
   }
 
+  // ── POINTS LOG ──────────────────────────────────────────────
+  async function logPoints(memberId, amount, type, reason) {
+    await supabase.from('points_log').insert({ member_id: memberId, amount, type, reason })
+  }
+
   async function adjustPoints(id, type, amount) {
     const member = members.find(m => m.id === id)
     if (!member) return false
     let newPoints = member.points
-    if (type === 'add') newPoints += amount
-    else if (type === 'sub') newPoints = Math.max(0, newPoints - amount)
-    else if (type === 'set') newPoints = Math.max(0, amount)
+    let delta = 0
+    if (type === 'add') { delta = amount; newPoints += amount }
+    else if (type === 'sub') { delta = -Math.min(amount, member.points); newPoints = Math.max(0, newPoints - amount) }
+    else if (type === 'set') { delta = amount - member.points; newPoints = Math.max(0, amount) }
     const { error } = await supabase.from('members').update({ points: newPoints }).eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
+    await logPoints(id, delta, type === 'add' ? 'manual_add' : type === 'sub' ? 'manual_sub' : 'manual_set', 'Manual adjustment by Admiral')
     showToast(`Points updated: ${newPoints.toLocaleString()} pts`)
     return true
   }
@@ -122,28 +129,10 @@ export function AppProvider({ children }) {
     return true
   }
 
-  async function closeCheckin(eventId) {
-  const { error } = await supabase.from('events')
-    .update({ checkin_code: null, checkin_expires_at: null })
-    .eq('id', eventId)
-  if (error) { showToast('Error: ' + error.message); return false }
-  showToast('Check-in closed')
-  return true
-}
-
   // Generate a check-in code for an event (expires in 1 hour)
   async function generateCheckinCode(eventId) {
-  const event = events.find(e => e.id === eventId)
-  const prefixMap = {
-    'World Boss': 'WB',
-    "Sindri's Island": 'SI',
-    'Server Battle': 'SB',
-    'Clan Sanctuary': 'CS',
-    'Clan Battle': 'CB',
-    'Special Event': 'SE',
-  }
-  const prefix = prefixMap[event?.type] || 'EV'
-  const code = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`
+    const prefix = ['SIEGE', 'BOSS', 'RAID', 'WAR', 'GUILD'][Math.floor(Math.random() * 5)]
+    const code = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`
     const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
     const { error } = await supabase.from('events')
       .update({ checkin_code: code, checkin_expires_at: expires })
@@ -216,6 +205,7 @@ export function AppProvider({ children }) {
         await supabase.from('members')
           .update({ points: member.points + event.points_reward })
           .eq('id', member.id)
+        await logPoints(member.id, event.points_reward, 'attendance', `Attended: ${event.name}`)
       }
     }
 
@@ -357,57 +347,40 @@ export function AppProvider({ children }) {
 
     const itemBids = bids.filter(b => b.item_id === itemId)
     const topBid = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
-    const minNext = Math.max(item.min_bid || 0, topBid + 10)
+    const minNext = Math.max(item.min_bid || 0, topBid + 1)
 
     if (amount < minNext) return { ok: false, msg: `Minimum bid is ${minNext.toLocaleString()} pts` }
+    if (member.points < amount) return { ok: false, msg: `${member.name} only has ${member.points.toLocaleString()} pts` }
 
-// Prevent top bidder from bidding again
-if (itemBids.length) {
-  const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
-  if (topBidEntry.member_id === memberId) {
-    return { ok: false, msg: `${member.name} is already the highest bidder.` }
-  }
-}
+    // Refund previous top bidder and notify them
+    if (itemBids.length) {
+      const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
+      if (topBidEntry.member_id !== memberId) {
+        const { data: freshPrevMember } = await supabase
+          .from('members').select('*').eq('id', topBidEntry.member_id).single()
+        if (freshPrevMember) {
+          await supabase.from('members')
+            .update({ points: freshPrevMember.points + topBidEntry.amount })
+            .eq('id', freshPrevMember.id)
+          await logPoints(freshPrevMember.id, topBidEntry.amount, 'refund', `Outbid refund: ${item.name}`)
 
-if (member.points < amount) return { ok: false, msg: `${member.name} only has ${member.points.toLocaleString()} pts` }
-
-   // Refund previous top bidder and notify them
-if (itemBids.length) {
-  const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
-  if (topBidEntry.member_id !== memberId) {
-    // Fetch fresh points from DB to avoid stale state
-    const { data: freshPrevMember } = await supabase
-      .from('members')
-      .select('*')
-      .eq('id', topBidEntry.member_id)
-      .single()
-
-    if (freshPrevMember) {
-      await supabase.from('members')
-        .update({ points: freshPrevMember.points + topBidEntry.amount })
-        .eq('id', freshPrevMember.id)
-
-      // Notify outbid member
-      await notifyMember(
-        freshPrevMember.id,
-        '⚠ You\'ve been outbid!',
-        `${member.name} outbid you on "${item.name}" with ${amount.toLocaleString()} pts. Your ${topBidEntry.amount.toLocaleString()} pts have been refunded.`,
-        'outbid',
-        `⚠ You've been outbid on **${item.name}**! **${member.name}** bid **${amount.toLocaleString()} pts**. Your **${topBidEntry.amount.toLocaleString()} pts** have been refunded. Bid higher to reclaim the top spot!`
-      )
+          await notifyMember(
+            freshPrevMember.id,
+            '⚠ You\'ve been outbid!',
+            `${member.name} outbid you on "${item.name}" with ${amount.toLocaleString()} pts. Your ${topBidEntry.amount.toLocaleString()} pts have been refunded.`,
+            'outbid',
+            `⚠ You've been outbid on **${item.name}**! **${member.name}** bid **${amount.toLocaleString()} pts**. Your **${topBidEntry.amount.toLocaleString()} pts** have been refunded. Bid higher to reclaim the top spot!`
+          )
+        }
+      }
     }
-  }
-}
 
-   // Fetch fresh points before deducting to avoid stale state
-const { data: freshMember } = await supabase
-  .from('members')
-  .select('points')
-  .eq('id', memberId)
-  .single()
-
-const currentPoints = freshMember?.points ?? member.points
-await supabase.from('members').update({ points: currentPoints - amount }).eq('id', memberId)
+    // Fetch fresh points before deducting
+    const { data: freshMember } = await supabase
+      .from('members').select('points').eq('id', memberId).single()
+    const currentPoints = freshMember?.points ?? member.points
+    await supabase.from('members').update({ points: currentPoints - amount }).eq('id', memberId)
+    await logPoints(memberId, -amount, 'bid', `Bid on: ${item.name}`)
 
     // Insert bid
     const { error } = await supabase.from('bids').insert({ item_id: itemId, member_id: memberId, amount })
@@ -433,7 +406,7 @@ await supabase.from('members').update({ points: currentPoints - amount }).eq('id
     <AppContext.Provider value={{
       members, events, items, bids, attendance, loading, toast,
       addMember, updateMember, removeMember, adjustPoints,
-      createEvent, removeEvent, generateCheckinCode, checkinWithCode, closeCheckin,
+      createEvent, removeEvent, generateCheckinCode, checkinWithCode,
       toggleAttendance, markAllAttendance, clearAllAttendance, lockEvent,
       addItem, endAuction, removeItem,
       placeBid,
