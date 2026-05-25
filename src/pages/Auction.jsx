@@ -6,7 +6,7 @@ import AuctionTimer from '../components/AuctionTimer'
 import { supabase } from '../lib/supabase'
 
 export default function Auction() {
-  const { items, bids, members, placeBid, endAuction, addItem, showToast } = useApp()
+  const { items, bids, members, placeBid, endAuction, addItem, removeItem, showToast } = useApp()
   const { isAdmin, discordNickname } = useAuth()
   const [modal, setModal] = useState(null)
   const [selectedItemId, setSelectedItemId] = useState(null)
