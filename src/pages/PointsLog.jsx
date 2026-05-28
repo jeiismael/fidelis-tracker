@@ -10,7 +10,7 @@ const TYPE_CONFIG = {
   manual_add: { label: 'Manual Add',       color: 'var(--green-light)', icon: '+' },
   manual_sub: { label: 'Manual Deduct',    color: 'var(--red-light)',   icon: '-' },
   manual_set: { label: 'Points Set',       color: 'var(--amber)',       icon: '✎' },
-  win:        { label: 'Auction Won',      color: 'var(--gold2)',       icon: '🏆' },
+  win: { label: 'Auction Won', color: 'var(--gold2)', icon: '🏆', hideAmount: true },
 }
 
 function timeAgo(dateStr) {
@@ -200,14 +200,17 @@ const searchedMembers = sortedMembers.filter(m =>
                         </td>
                         <td style={{ color: 'var(--text-dim)', fontSize: 13 }}>{log.reason || '—'}</td>
                         <td>
-                          <span style={{
-                            fontFamily: 'Cinzel,serif',
-                            fontSize: 15,
-                            color: isPositive ? 'var(--green-light)' : 'var(--red-light)',
-                            fontWeight: 600,
-                          }}>
-                            {isPositive ? '+' : ''}{log.amount.toLocaleString()}
-                          </span>
+                          {cfg.hideAmount
+                            ? <span style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: 'var(--gold-dim)', letterSpacing: 1 }}>ITEM AWARDED</span>
+                            : <span style={{
+                                fontFamily: 'Cinzel,serif',
+                                fontSize: 15,
+                                color: isPositive ? 'var(--green-light)' : 'var(--red-light)',
+                                fontWeight: 600,
+                              }}>
+                                {isPositive ? '+' : ''}{log.amount.toLocaleString()}
+                              </span>
+                          }
                         </td>
                         <td style={{ color: 'var(--text-faint)', fontSize: 12 }}>{timeAgo(log.created_at)}</td>
                       </tr>

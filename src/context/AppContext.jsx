@@ -280,15 +280,16 @@ export function AppProvider({ children }) {
         const winner = members.find(m => m.id === topBidEntry.member_id)
 
         // Notify winner (in-app + Discord DM)
-        if (winner) {
-          await notifyMember(
-            winner.id,
-            '🏆 You won an auction!',
-            `You won "${item.name}" for ${topBidEntry.amount.toLocaleString()} pts!`,
-            'win',
-            `🏆 Congratulations! You won the auction for **${item.name}** with a bid of **${topBidEntry.amount.toLocaleString()} pts**!`
-          )
-        }
+if (winner) {
+  await notifyMember(
+    winner.id,
+    '🏆 You won an auction!',
+    `You won "${item.name}" for ${topBidEntry.amount.toLocaleString()} pts!`,
+    'win',
+    `🏆 Congratulations! You won the auction for **${item.name}** with a bid of **${topBidEntry.amount.toLocaleString()} pts**!`
+  )
+  await logPoints(winner.id, 0, 'win', `Won: ${item.name} (${topBidEntry.amount.toLocaleString()} pts)`)
+}
 
         // Notify admiral (in-app + Discord DM)
         const adminMembers = members.filter(m => m.rank === 'Officer' || m.rank === 'Admiral')
