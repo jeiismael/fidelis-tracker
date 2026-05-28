@@ -267,10 +267,16 @@ export function AppProvider({ children }) {
 
   // ── ITEMS / AUCTIONS ────────────────────────────────────────
   async function endAuction(id) {
-    const item = items.find(i => i.id === id)
-    const { error } = await supabase.from('items').update({ status: 'ended' }).eq('id', id)
-    if (error) { showToast('Error: ' + error.message); return false }
-    showToast('Auction ended')
+  // Fetch fresh status from DB to prevent double-firing
+  const { data: freshItem } = await supabase
+    .from('items').select('*').eq('id', id).single()
+  
+  if (!freshItem || freshItem.status === 'ended') return false
+
+  const item = freshItem
+  const { error } = await supabase.from('items').update({ status: 'ended' }).eq('id', id)
+  if (error) { showToast('Error: ' + error.message); return false }
+  showToast('Auction ended')
 
     if (item) {
       const itemBids = bids.filter(b => b.item_id === id)
