@@ -276,6 +276,7 @@ export default function Auction() {
       <option value="600000">10 Minutes</option>
       <option value="1800000">30 Minutes</option>
       <option value="3600000">1 Hour</option>
+      <option value="7200000">2 Hours</option>
       <option value="10800000">3 Hours</option>
       <option value="21600000">6 Hours</option>
       <option value="43200000">12 Hours</option>
