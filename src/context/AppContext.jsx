@@ -266,16 +266,21 @@ export function AppProvider({ children }) {
   }
 
   // ── ITEMS / AUCTIONS ────────────────────────────────────────
-  async function endAuction(id) {
-  // Fetch fresh status from DB to prevent double-firing
-  const { data: freshItem } = await supabase
-    .from('items').select('*').eq('id', id).single()
-  
-  if (!freshItem || freshItem.status === 'ended') return false
+ async function endAuction(id) {
+  // Use a single atomic update that only succeeds if status is still 'active'
+  const { data, error } = await supabase
+    .from('items')
+    .update({ status: 'ended' })
+    .eq('id', id)
+    .eq('status', 'active') // Only update if still active
+    .select()
 
-  const item = freshItem
-  const { error } = await supabase.from('items').update({ status: 'ended' }).eq('id', id)
-  if (error) { showToast('Error: ' + error.message); return false }
+  if (error || !data || data.length === 0) {
+    // Either error or item was already ended — stop here
+    return false
+  }
+
+  const item = data[0]
   showToast('Auction ended')
 
     if (item) {
