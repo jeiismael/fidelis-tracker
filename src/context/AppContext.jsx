@@ -363,10 +363,13 @@ if (winner) {
 
   // ── BIDS ────────────────────────────────────────────────────
   async function placeBid(itemId, memberId, amount) {
-    const item = items.find(i => i.id === itemId)
-    const member = members.find(m => m.id === memberId)
-    if (!item || !member) return { ok: false, msg: 'Invalid item or member' }
-    if (item.status !== 'active') return { ok: false, msg: 'Auction is closed' }
+  // Fetch fresh item status from DB to avoid race condition with pg_cron
+  const { data: freshItem } = await supabase
+    .from('items').select('*').eq('id', itemId).single()
+  const item = freshItem
+  const member = members.find(m => m.id === memberId)
+  if (!item || !member) return { ok: false, msg: 'Invalid item or member' }
+  if (item.status !== 'active') return { ok: false, msg: 'Auction is closed' }
 
     const itemBids = bids.filter(b => b.item_id === itemId)
     const topBid = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
