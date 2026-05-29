@@ -281,14 +281,16 @@ export function AppProvider({ children }) {
   }
 
   const item = data[0]
-  showToast('Auction ended')
+showToast('Auction ended')
 
-    if (item) {
-      const itemBids = bids.filter(b => b.item_id === id)
+if (item) {
+  // Fetch fresh bids from DB instead of relying on potentially stale state
+  const { data: freshBids } = await supabase
+    .from('bids')
+    .select('*')
+    .eq('item_id', id)
 
-      if (itemBids.length) {
-        const topBidEntry = itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
-        const winner = members.find(m => m.id === topBidEntry.member_id)
+  const itemBids = freshBids || []
 
         // Notify winner (in-app + Discord DM)
 if (winner) {
