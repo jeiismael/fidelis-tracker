@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 export default function Roster() {
   const { members, events, items, attendance, addMember, removeMember, adjustPoints } = useApp()
@@ -16,6 +18,23 @@ export default function Roster() {
   .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
   .sort((a, b) => b.points - a.points)
   const totalPts = members.reduce((s, m) => s + m.points, 0)
+
+  const [attendanceCounts, setAttendanceCounts] = useState({})
+
+useEffect(() => {
+  supabase
+    .from('points_log')
+    .select('member_id')
+    .eq('type', 'attendance')
+    .then(({ data }) => {
+      if (!data) return
+      const counts = {}
+      data.forEach(log => {
+        counts[log.member_id] = (counts[log.member_id] || 0) + 1
+      })
+      setAttendanceCounts(counts)
+    })
+}, [])
 
   function openAdd() { setForm({ name: '', rank: 'Recruit', points: 0 }); setModal('add') }
   function openAdjust(m) { setSelected(m); setForm({ type: 'add', amount: 0 }); setModal('adjust') }
@@ -83,7 +102,7 @@ export default function Roster() {
               </thead>
               <tbody>
                 {sorted.map((m, i) => {
-                  const attended = attendance.filter(a => a.member_id === m.id).length
+                  const attended = attendanceCounts[m.id] || 0
                   return (
                     <tr key={m.id}>
                       <td style={{ color: 'var(--text-faint)', fontFamily: 'Cinzel,serif', fontSize: 12 }}>{i + 1}</td>
