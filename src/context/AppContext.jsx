@@ -267,92 +267,20 @@ export function AppProvider({ children }) {
 
   // ── ITEMS / AUCTIONS ────────────────────────────────────────
  async function endAuction(id) {
-  // Use a single atomic update that only succeeds if status is still 'active'
   const { data, error } = await supabase
     .from('items')
     .update({ status: 'ended' })
     .eq('id', id)
-    .eq('status', 'active') // Only update if still active
+    .eq('status', 'active')
     .select()
 
   if (error || !data || data.length === 0) {
-    // Either error or item was already ended — stop here
     return false
   }
 
-  const item = data[0]
-showToast('Auction ended')
-
-if (item) {
-  // Fetch fresh bids from DB instead of relying on potentially stale state
-  const { data: freshBids } = await supabase
-    .from('bids')
-    .select('*')
-    .eq('item_id', id)
-
-  const itemBids = freshBids || []
-
-        // Notify winner (in-app + Discord DM)
-if (winner) {
-  await notifyMember(
-    winner.id,
-    '🏆 You won an auction!',
-    `You won "${item.name}" for ${topBidEntry.amount.toLocaleString()} pts!`,
-    'win',
-    `🏆 Congratulations! You won the auction for **${item.name}** with a bid of **${topBidEntry.amount.toLocaleString()} pts**!`
-  )
-  await logPoints(winner.id, 0, 'win', `Won: ${item.name} (${topBidEntry.amount.toLocaleString()} pts)`)
+  showToast('Auction ended')
+  return true
 }
-
-        // Notify admiral (in-app + Discord DM)
-        const adminMembers = members.filter(m => m.rank === 'Officer' || m.rank === 'Admiral')
-        for (const admin of adminMembers) {
-          if (admin.id !== winner?.id) {
-            await notifyMember(
-              admin.id,
-              '⚔ Auction Ended',
-              `"${item.name}" was won by ${winner?.name || 'Unknown'} for ${topBidEntry.amount.toLocaleString()} pts.`,
-              'auction_ended',
-              `⚔ Auction ended: **${item.name}** was won by **${winner?.name || 'Unknown'}** for **${topBidEntry.amount.toLocaleString()} pts**.`
-            )
-          }
-        }
-
-        // Post announcement in Discord channel tagging the winner
-        try {
-          await fetch('/api/announce-auction-end', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              itemName: item.name,
-              winnerDiscordId: winner?.discord_id || null,
-              winnerName: winner?.name || 'Unknown',
-              amount: topBidEntry.amount,
-              noBids: false,
-            }),
-          })
-        } catch (e) {
-          console.warn('Channel announcement failed:', e)
-        }
-
-      } else {
-        // No bids — post a no-bids announcement
-        try {
-          await fetch('/api/announce-auction-end', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              itemName: item.name,
-              noBids: true,
-            }),
-          })
-        } catch (e) {
-          console.warn('Channel announcement failed:', e)
-        }
-      }
-    }
-    return true
-  }
 
   async function removeItem(id) {
     const { error } = await supabase.from('items').delete().eq('id', id)
