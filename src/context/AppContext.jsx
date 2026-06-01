@@ -299,7 +299,11 @@ export function AppProvider({ children }) {
   if (!item || !member) return { ok: false, msg: 'Invalid item or member' }
   if (item.status !== 'active') return { ok: false, msg: 'Auction is closed' }
 
-    const itemBids = bids.filter(b => b.item_id === itemId)
+    const { data: freshBids } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('item_id', itemId)
+    const itemBids = freshBids || []
     const topBid = itemBids.length ? Math.max(...itemBids.map(b => b.amount)) : 0
     const minNext = Math.max(item.min_bid || 0, topBid + 10)
 
