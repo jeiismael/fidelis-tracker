@@ -92,8 +92,10 @@ export default function Auction() {
   }
 
   const handleExpired = useCallback(async (itemId) => {
-  await endAuction(itemId)
-}, [endAuction])
+  // Do nothing — pg_cron handles ending auctions server-side
+  // Just refresh items to show updated status
+  console.log('Timer expired for item:', itemId)
+}, [])
 
   function getTopBid(itemId) {
     const itemBids = bids.filter(b => b.item_id === itemId)
