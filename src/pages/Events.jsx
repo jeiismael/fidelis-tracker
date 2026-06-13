@@ -195,17 +195,24 @@ export default function Events() {
                   {isAdmin && <button className="btn btn-red btn-sm" onClick={() => removeEvent(ev.id)}>Remove</button>}
                 </div>
               </div>
-              <div style={{ fontSize: 15, color: 'var(--text-dim)' }}>
-                Attended: <b style={{ color: 'var(--text)' }}>{att.length}</b> / {members.length} members
-                {att.length > 0 && (
-                  <span> · {att.slice(0, 5).map(a => {
-                    const m = members.find(x => x.id === a.member_id)
-                    return m ? <span key={a.id} style={{ color: 'var(--gold)', marginRight: 6 }}>{m.name}</span> : null
-                  })}
-                    {att.length > 5 && <span style={{ color: 'var(--text-faint)' }}>+{att.length - 5} more</span>}
-                  </span>
-                )}
-              </div>
+              <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 10 }}>
+  Attended: <b style={{ color: 'var(--text)' }}>{att.length}</b> / {members.length} members
+</div>
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px 12px' }}>
+  {[...members].sort((a, b) => a.name.localeCompare(b.name)).map(m => {
+    const checked = att.some(a => a.member_id === m.id)
+    return (
+      <div key={m.id} style={{
+        display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+        color: checked ? 'var(--gold)' : 'var(--text-faint)',
+      }}>
+        <span>{checked ? '✓' : '○'}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+      </div>
+    )
+  })}
+</div>
             </div>
           )
         })}
