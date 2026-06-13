@@ -226,16 +226,27 @@ export function AppProvider({ children }) {
 
   // ── ITEMS / AUCTIONS ────────────────────────────────────────
   async function addItem({ name, description, min_bid, duration_ms, thumbnail_url = null }) {
-    const end_time = duration_ms > 0
-      ? new Date(Date.now() + duration_ms).toISOString()
-      : null
-    const { error } = await supabase.from('items').insert({
-      name, description, min_bid, status: 'active', end_time, duration_ms, thumbnail_url
-    })
-    if (error) { showToast('Error: ' + error.message); return false }
-    showToast(`"${name}" listed for auction`)
-    return true
-  }
+  const { error } = await supabase.from('items').insert({
+    name, description, min_bid, status: 'pending', end_time: null, duration_ms, thumbnail_url
+  })
+  if (error) { showToast('Error: ' + error.message); return false }
+  showToast(`"${name}" added — start the auction when ready`)
+  return true
+}
+
+async function startAuction(id) {
+  const item = items.find(i => i.id === id)
+  if (!item) return false
+  const end_time = item.duration_ms > 0
+    ? new Date(Date.now() + item.duration_ms).toISOString()
+    : null
+  const { error } = await supabase.from('items')
+    .update({ status: 'active', end_time })
+    .eq('id', id)
+  if (error) { showToast('Error: ' + error.message); return false }
+  showToast(`"${item.name}" auction started!`)
+  return true
+}
 
   // ── NOTIFICATIONS ───────────────────────────────────────────
   async function createNotification(memberId, title, message, type) {
@@ -375,7 +386,7 @@ export function AppProvider({ children }) {
       addMember, updateMember, removeMember, adjustPoints,
       createEvent, removeEvent, generateCheckinCode, checkinWithCode,
       toggleAttendance, markAllAttendance, clearAllAttendance, lockEvent,
-      addItem, endAuction, removeItem,
+      addItem, startAuction, endAuction, removeItem,
       placeBid,
       showToast,
     }}>

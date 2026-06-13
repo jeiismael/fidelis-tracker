@@ -6,7 +6,7 @@ import AuctionTimer from '../components/AuctionTimer'
 import { supabase } from '../lib/supabase'
 
 export default function Auction() {
-  const { items, bids, members, placeBid, endAuction, addItem, removeItem, showToast } = useApp()
+  const { items, bids, members, placeBid, endAuction, addItem, startAuction, removeItem, showToast } = useApp()
   const { isAdmin, discordNickname } = useAuth()
   const [modal, setModal] = useState(null)
   const [selectedItemId, setSelectedItemId] = useState(null)
@@ -103,6 +103,7 @@ export default function Auction() {
     return itemBids.reduce((a, b) => a.amount > b.amount ? a : b)
   }
 
+  const pendingItems = items.filter(i => i.status === 'pending' && i.name.toLowerCase().includes(search.toLowerCase()))
   const activeItems = items.filter(i => i.status === 'active' && i.name.toLowerCase().includes(search.toLowerCase()))
   const endedItems = items.filter(i => i.status === 'ended' && i.name.toLowerCase().includes(search.toLowerCase()))
   const selectedItem = items.find(i => i.id === selectedItemId)
@@ -136,7 +137,38 @@ export default function Auction() {
       {items.length === 0 && (
         <div className="empty-state">No active auctions at the moment.</div>
       )}
-
+{pendingItems.length > 0 && (
+  <>
+    <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, color: 'var(--amber)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+      ⏸ Pending — Not Yet Started ({pendingItems.length})
+    </div>
+    <div className="grid-3" style={{ marginBottom: 20 }}>
+      {pendingItems.map(item => (
+        <div key={item.id} className="auction-card" style={{ borderColor: 'var(--amber)' }}>
+          {item.thumbnail_url && (
+            <img src={item.thumbnail_url} alt={item.name}
+              style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 12, marginBottom: 10, border: '1px solid var(--border2)' }} />
+          )}
+          <div className="item-name">{item.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
+            Min Bid: <b style={{ color: 'var(--gold)' }}>{item.min_bid.toLocaleString()} pts</b>
+          </div>
+          {isAdmin ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => startAuction(item.id)}>▶ Start Auction</button>
+              <button className="btn btn-red btn-sm" onClick={() => removeItem(item.id)}>Remove</button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Cinzel,serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+              Coming Soon
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </>
+)}
       {activeItems.length > 0 && (
         <>
           <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--gold-dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
