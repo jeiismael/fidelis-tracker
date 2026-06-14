@@ -191,92 +191,95 @@ export default function Auction() {
       )}
 
       {pendingItems.length > 0 && (
-        <>
-          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, color: 'var(--amber)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
-            ⏸ Pending — Not Yet Started ({pendingItems.length})
+  <>
+    <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--amber)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+      ⏸ Pending — Not Yet Started ({pendingItems.length})
+    </div>
+    <div className="grid-3" style={{ marginBottom: 20 }}>
+      {pendingItems.map(item => (
+        <div key={item.id} className="auction-card" style={{ borderColor: 'var(--amber)', opacity: 0.85, position: 'relative' }}>
+          <span style={{
+            position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
+            letterSpacing: 1, color: 'var(--amber)', border: '1px solid var(--amber)',
+            borderRadius: 2, padding: '2px 8px', background: 'rgba(224,124,26,.1)',
+          }}>
+            PENDING
+          </span>
+          {item.thumbnail_url && (
+            <img src={item.thumbnail_url} alt={item.name}
+              style={{ width: '100%', height: 200, objectFit: 'contain', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
+          )}
+          <div className="item-name">{item.name}</div>
+          <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
+          <hr className="divider" style={{ margin: '8px 0' }} />
+          <div style={{ fontSize: 15, color: 'var(--text-dim)' }}>
+            Min Bid: <b style={{ color: 'var(--gold)' }}>{item.min_bid.toLocaleString()} pts</b>
           </div>
-          <div className="grid-3" style={{ marginBottom: 20 }}>
-            {pendingItems.map(item => (
-              <div key={item.id} className="auction-card" style={{ borderColor: 'var(--amber)', opacity: 0.8, position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
-                  letterSpacing: 1, color: 'var(--amber)', border: '1px solid var(--amber)',
-                  borderRadius: 2, padding: '2px 8px', background: 'rgba(224,124,26,.1)',
-                }}>
-                  PENDING
-                </span>
-                {item.thumbnail_url && (
-                  <img src={item.thumbnail_url} alt={item.name}
-                    style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 12, marginBottom: 10, border: '1px solid var(--border2)' }} />
-                )}
-                <div className="item-name">{item.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
-                  Min Bid: <b style={{ color: 'var(--gold)' }}>{item.min_bid.toLocaleString()} pts</b>
-                </div>
-                {isAdmin ? (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => startAuction(item.id)}>▶ Start Auction</button>
-                    <button className="btn btn-red btn-sm" onClick={() => removeItem(item.id)}>Remove</button>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Cinzel,serif', letterSpacing: 1, textTransform: 'uppercase' }}>
-                    Coming Soon
-                  </div>
-                )}
+          <div style={{ marginTop: 10 }}>
+            {isAdmin ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => startAuction(item.id)}>▶ Start Auction</button>
+                <button className="btn btn-red btn-sm" onClick={() => removeItem(item.id)}>Remove</button>
               </div>
-            ))}
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Cinzel,serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+                Coming Soon
+              </div>
+            )}
           </div>
-        </>
-      )}
+        </div>
+      ))}
+    </div>
+  </>
+)}
 
       {endedItems.length > 0 && (
-        <>
-          <hr className="divider" />
-          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--text-faint)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
-            📜 Closed Auctions
+  <>
+    <hr className="divider" />
+    <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--text-faint)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+      📜 Closed Auctions
+    </div>
+    <div className="grid-3" style={{ marginBottom: 20 }}>
+      {endedItems.map(item => {
+        const topBid = getTopBid(item.id)
+        const topBidder = topBid ? members.find(m => m.id === topBid.member_id) : null
+        return (
+          <div key={item.id} className="auction-card ended" style={{ position: 'relative' }}>
+            <span style={{
+              position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
+              letterSpacing: 1, color: 'var(--text-faint)', border: '1px solid var(--border2)',
+              borderRadius: 2, padding: '2px 8px', background: 'rgba(0,0,0,.3)',
+            }}>
+              ENDED
+            </span>
+            {item.thumbnail_url && (
+              <img src={item.thumbnail_url} alt={item.name}
+                style={{ width: '100%', height: 200, objectFit: 'contain', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)', filter: 'grayscale(50%)' }} />
+            )}
+            <div className="item-name">{item.name}</div>
+            <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description}</div>
+            <hr className="divider" style={{ margin: '8px 0' }} />
+            <div>
+              <div style={{ fontSize: 15, color: 'var(--text-dim)', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Cinzel,serif' }}>Winner</div>
+              <div className="top-bid">{topBid ? topBid.amount.toLocaleString() + ' pts' : '—'}</div>
+              <div style={{ fontSize: 20, color: 'var(--text-dim)' }}>{topBidder ? topBidder.name : 'No bids'}</div>
+            </div>
+            <div className="timer urgent" style={{ marginTop: 8 }}>Auction Ended</div>
+            {isAdmin && (
+              <button
+                className="btn btn-red btn-sm"
+                style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                onClick={() => removeItem(item.id)}
+              >
+                Remove
+              </button>
+            )}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 25 }}>
-            {endedItems.map(item => {
-              const topBid = getTopBid(item.id)
-              const topBidder = topBid ? members.find(m => m.id === topBid.member_id) : null
-              return (
-                <div key={item.id} className="auction-card ended" style={{ width: 200, position: 'relative' }}>
-                  <span style={{
-                    position: 'absolute', top: 8, right: 8, fontSize: 9, fontFamily: 'Cinzel,serif',
-                    letterSpacing: 1, color: 'var(--text-faint)', border: '1px solid var(--border2)',
-                    borderRadius: 2, padding: '2px 6px', background: 'rgba(0,0,0,.3)',
-                  }}>
-                    ENDED
-                  </span>
-                  {item.thumbnail_url && (
-                    <img src={item.thumbnail_url} alt={item.name}
-                      style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)', filter: 'grayscale(50%)' }} />
-                  )}
-                  <div className="item-name">{item.name}</div>
-                  <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description}</div>
-                  <hr className="divider" style={{ margin: '8px 0' }} />
-                  <div>
-                    <div style={{ fontSize: 15, color: 'var(--text-dim)', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Cinzel,serif' }}>Winner</div>
-                    <div className="top-bid">{topBid ? topBid.amount.toLocaleString() + ' pts' : '—'}</div>
-                    <div style={{ fontSize: 20, color: 'var(--text-dim)' }}>{topBidder ? topBidder.name : 'No bids'}</div>
-                  </div>
-                  <div className="timer urgent" style={{ marginTop: 8 }}>Auction Ended</div>
-                    {isAdmin && (
-                      <button
-                        className="btn btn-red btn-sm"
-                        style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
-                        onClick={() => removeItem(item.id)}
-                      >
-                        Remove
-                      </button>
-                    )}
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
+        )
+      })}
+    </div>
+  </>
+)}
 
       {/* ── LIST ITEM MODAL ── */}
       {modal === 'add' && (
