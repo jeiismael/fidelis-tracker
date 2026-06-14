@@ -38,7 +38,7 @@ export default function Auction() {
   )
 
   function openAdd() {
-    setForm({ min_bid: 10, duration_ms: '86400000', quantity: 1 })
+    setForm({ min_bid: 10, duration_ms: '3600000', quantity: 1 })
     setSelectedRegistryItem(null)
     setRegistrySearch('')
     setModal('add')
