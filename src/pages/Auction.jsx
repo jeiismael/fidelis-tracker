@@ -140,64 +140,64 @@ export default function Auction() {
 
 
       {activeItems.length > 0 && (
-        <>
-          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--gold-dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
-            ⏳ Active Auctions ({activeItems.length})
+  <>
+    <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--gold-dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+      ⏳ Active Auctions ({activeItems.length})
+    </div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 25 }}>
+      {activeItems.map(item => {
+        const topBid = getTopBid(item.id)
+        const topBidder = topBid ? members.find(m => m.id === topBid.member_id) : null
+        const count = bids.filter(b => b.item_id === item.id).length
+        const canBid = isAdmin || !!myMember
+        return (
+          <div key={item.id} className="auction-card active" style={{ width: 200, position: 'relative' }}>
+            <span style={{
+              position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
+              letterSpacing: 1, color: 'var(--green-light)', border: '1px solid var(--green)',
+              borderRadius: 2, padding: '2px 8px', background: 'rgba(46,125,80,.1)',
+            }}>
+              ACTIVE
+            </span>
+            {item.thumbnail_url && (
+              <img src={item.thumbnail_url} alt={item.name}
+                style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
+            )}
+            <div className="item-name">{item.name}</div>
+            <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
+            <hr className="divider" style={{ margin: '8px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div>
+                <div style={{ fontSize: 15, color: 'var(--text-dim)', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Cinzel,serif' }}>Top Bid</div>
+                <div className="top-bid">{topBid ? topBid.amount.toLocaleString() + ' pts' : '— pts'}</div>
+                <div style={{ fontSize: 20, color: 'var(--text-dim)', marginTop: 2 }}>{topBidder ? topBidder.name : 'No bids yet'}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 15, color: 'var(--text-dim)', fontFamily: 'Cinzel,serif', letterSpacing: 1 }}>{count} bid{count !== 1 ? 's' : ''}</div>
+                {canBid && (
+                  <button className="btn btn-gold btn-sm" style={{ marginTop: 6 }} onClick={() => openBid(item.id)}>Bid</button>
+                )}
+                {isAdmin && (
+                  <button className="btn btn-ghost btn-sm" style={{ marginTop: 4, display: 'block' }} onClick={() => endAuction(item.id)}>End</button>
+                )}
+              </div>
+            </div>
+            <AuctionTimer endTime={item.end_time} durationMs={item.duration_ms} onExpired={() => handleExpired(item.id)} />
           </div>
-          <div className="grid-3" style={{ marginBottom: 20 }}>
-            {activeItems.map(item => {
-              const topBid = getTopBid(item.id)
-              const topBidder = topBid ? members.find(m => m.id === topBid.member_id) : null
-              const count = bids.filter(b => b.item_id === item.id).length
-              const canBid = isAdmin || !!myMember
-              return (
-                <div key={item.id} className="auction-card active" style={{ position: 'relative' }}>
-                  <span style={{
-                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
-                    letterSpacing: 1, color: 'var(--green-light)', border: '1px solid var(--green)',
-                    borderRadius: 2, padding: '2px 8px', background: 'rgba(46,125,80,.1)',
-                  }}>
-                    ACTIVE
-                  </span>
-                  {item.thumbnail_url && (
-                    <img src={item.thumbnail_url} alt={item.name}
-                      style={{ width: '100%', height: 200, objectFit: 'contain', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
-                  )}
-                  <div className="item-name">{item.name}</div>
-                  <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
-                  <hr className="divider" style={{ margin: '8px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <div>
-                      <div style={{ fontSize: 15, color: 'var(--text-dim)', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Cinzel,serif' }}>Top Bid</div>
-                      <div className="top-bid">{topBid ? topBid.amount.toLocaleString() + ' pts' : '— pts'}</div>
-                      <div style={{ fontSize: 20, color: 'var(--text-dim)', marginTop: 2 }}>{topBidder ? topBidder.name : 'No bids yet'}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 15, color: 'var(--text-dim)', fontFamily: 'Cinzel,serif', letterSpacing: 1 }}>{count} bid{count !== 1 ? 's' : ''}</div>
-                      {canBid && (
-                        <button className="btn btn-gold btn-sm" style={{ marginTop: 6 }} onClick={() => openBid(item.id)}>Bid</button>
-                      )}
-                      {isAdmin && (
-                        <button className="btn btn-ghost btn-sm" style={{ marginTop: 4, display: 'block' }} onClick={() => endAuction(item.id)}>End</button>
-                      )}
-                    </div>
-                  </div>
-                  <AuctionTimer endTime={item.end_time} durationMs={item.duration_ms} onExpired={() => handleExpired(item.id)} />
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
+        )
+      })}
+    </div>
+  </>
+)}
 
       {pendingItems.length > 0 && (
   <>
     <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--amber)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
       ⏸ Pending — Not Yet Started ({pendingItems.length})
     </div>
-    <div className="grid-3" style={{ marginBottom: 20 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 25 }}>
       {pendingItems.map(item => (
-        <div key={item.id} className="auction-card" style={{ borderColor: 'var(--amber)', opacity: 0.85, position: 'relative' }}>
+        <div key={item.id} className="auction-card" style={{ width: 200, borderColor: 'var(--amber)', opacity: 0.85, position: 'relative' }}>
           <span style={{
             position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
             letterSpacing: 1, color: 'var(--amber)', border: '1px solid var(--amber)',
@@ -207,26 +207,24 @@ export default function Auction() {
           </span>
           {item.thumbnail_url && (
             <img src={item.thumbnail_url} alt={item.name}
-              style={{ width: '100%', height: 200, objectFit: 'contain', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
+              style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
           )}
           <div className="item-name">{item.name}</div>
           <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
           <hr className="divider" style={{ margin: '8px 0' }} />
-          <div style={{ fontSize: 15, color: 'var(--text-dim)' }}>
+          <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 10 }}>
             Min Bid: <b style={{ color: 'var(--gold)' }}>{item.min_bid.toLocaleString()} pts</b>
           </div>
-          <div style={{ marginTop: 10 }}>
-            {isAdmin ? (
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => startAuction(item.id)}>▶ Start Auction</button>
-                <button className="btn btn-red btn-sm" onClick={() => removeItem(item.id)}>Remove</button>
-              </div>
-            ) : (
-              <div style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Cinzel,serif', letterSpacing: 1, textTransform: 'uppercase' }}>
-                Coming Soon
-              </div>
-            )}
-          </div>
+          {isAdmin ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => startAuction(item.id)}>▶ Start Auction</button>
+              <button className="btn btn-red btn-sm" onClick={() => removeItem(item.id)}>Remove</button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: 'var(--amber)', fontFamily: 'Cinzel,serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+              Coming Soon
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -239,22 +237,22 @@ export default function Auction() {
     <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, color: 'var(--text-faint)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
       📜 Closed Auctions
     </div>
-    <div className="grid-3" style={{ marginBottom: 20 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 25 }}>
       {endedItems.map(item => {
         const topBid = getTopBid(item.id)
         const topBidder = topBid ? members.find(m => m.id === topBid.member_id) : null
         return (
-          <div key={item.id} className="auction-card ended" style={{ position: 'relative' }}>
+          <div key={item.id} className="auction-card ended" style={{ width: 200, position: 'relative' }}>
             <span style={{
-              position: 'absolute', top: 10, right: 10, fontSize: 10, fontFamily: 'Cinzel,serif',
+              position: 'absolute', top: 8, right: 8, fontSize: 9, fontFamily: 'Cinzel,serif',
               letterSpacing: 1, color: 'var(--text-faint)', border: '1px solid var(--border2)',
-              borderRadius: 2, padding: '2px 8px', background: 'rgba(0,0,0,.3)',
+              borderRadius: 2, padding: '2px 6px', background: 'rgba(0,0,0,.3)',
             }}>
               ENDED
             </span>
             {item.thumbnail_url && (
               <img src={item.thumbnail_url} alt={item.name}
-                style={{ width: '100%', height: 200, objectFit: 'contain', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)', filter: 'grayscale(50%)' }} />
+                style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)', filter: 'grayscale(50%)' }} />
             )}
             <div className="item-name">{item.name}</div>
             <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description}</div>
