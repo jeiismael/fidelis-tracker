@@ -25,7 +25,7 @@ export default function AccessDenied() {
         Access Denied
       </h1>
       <p style={{ color: 'var(--text-dim)', fontSize: 14, marginBottom: 8 }}>
-        {userInfo?.username ? `${userInfo.username}, you` : 'You'} do not have the <span style={{ color: 'var(--gold)' }}>Fidelis</span> role in the Iron Veil Discord server.
+        {userInfo?.username ? `${userInfo.username}, you` : 'You'} do not have the <span style={{ color: 'var(--gold)' }}>Fidelis</span> role in the Fidelis Discord server.
       </p>
       <p style={{ color: 'var(--text-faint)', fontSize: 13, marginBottom: 32, fontStyle: 'italic', maxWidth: 400, textAlign: 'center' }}>
         If you believe this is an error, please contact your guild officers in Discord to have your membership verified.
