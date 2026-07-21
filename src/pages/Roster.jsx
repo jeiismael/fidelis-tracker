@@ -1,8 +1,7 @@
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useMemo } from 'react'
 
 export default function Roster() {
   const { members, events, items, attendance, addMember, removeMember, adjustPoints } = useApp()
@@ -18,22 +17,13 @@ export default function Roster() {
   .sort((a, b) => b.points - a.points)
   const totalPts = members.reduce((s, m) => s + m.points, 0)
 
-  const [attendanceCounts, setAttendanceCounts] = useState({})
-
-useEffect(() => {
-  supabase
-    .from('points_log')
-    .select('member_id')
-    .eq('type', 'attendance')
-    .then(({ data }) => {
-      if (!data) return
-      const counts = {}
-      data.forEach(log => {
-        counts[log.member_id] = (counts[log.member_id] || 0) + 1
-      })
-      setAttendanceCounts(counts)
+  const attendanceCounts = useMemo(() => {
+    const counts = {}
+    attendance.forEach(a => {
+      counts[a.member_id] = (counts[a.member_id] || 0) + 1
     })
-}, [])
+    return counts
+  }, [attendance])
 
   function openAdd() { setForm({ name: '', rank: 'Recruit', points: 0 }); setModal('add') }
   function openAdjust(m) { setSelected(m); setForm({ type: 'add', amount: 0 }); setModal('adjust') }

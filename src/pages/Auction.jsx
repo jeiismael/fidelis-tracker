@@ -38,7 +38,7 @@ export default function Auction() {
   )
 
   function openAdd() {
-    setForm({ min_bid: 10, duration_ms: '3600000', quantity: 1 })
+    setForm({ min_bid: 10, duration_ms: '3600000', quantity: 1, stack_size: 1, is_tradable: false })
     setSelectedRegistryItem(null)
     setRegistrySearch('')
     setModal('add')
@@ -58,6 +58,7 @@ export default function Auction() {
   if (!selectedRegistryItem) return
   setBusy(true)
   const quantity = Math.max(1, Number(form.quantity) || 1)
+  const stackSize = Math.max(1, Number(form.stack_size) || 1)
   const promises = Array.from({ length: quantity }, () =>
     addItem({
       name: selectedRegistryItem.name,
@@ -65,6 +66,8 @@ export default function Auction() {
       thumbnail_url: selectedRegistryItem.thumbnail_url || null,
       min_bid: Number(form.min_bid) || 10,
       duration_ms: Number(form.duration_ms) || 0,
+      is_tradable: !!form.is_tradable,
+      stack_size: stackSize,
     })
   )
   await Promise.all(promises)
@@ -163,8 +166,13 @@ export default function Auction() {
               <img src={item.thumbnail_url} alt={item.name}
                 style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
             )}
-            <div className="item-name">{item.name}</div>
+            <div className="item-name">{item.name}{item.stack_size > 1 ? ` x${item.stack_size}` : ''}</div>
             <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
+            {item.is_tradable && (
+              <div style={{ fontSize: 12, color: 'var(--green-light)', fontStyle: 'italic', marginBottom: 8 }}>
+                🔄 Tradable
+              </div>
+            )}
             <hr className="divider" style={{ margin: '8px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <div>
@@ -209,8 +217,13 @@ export default function Auction() {
             <img src={item.thumbnail_url} alt={item.name}
               style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)' }} />
           )}
-          <div className="item-name">{item.name}</div>
+          <div className="item-name">{item.name}{item.stack_size > 1 ? ` x${item.stack_size}` : ''}</div>
           <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description || ''}</div>
+          {item.is_tradable && (
+            <div style={{ fontSize: 12, color: 'var(--green-light)', fontStyle: 'italic', marginBottom: 8 }}>
+              🔄 Tradable
+            </div>
+          )}
           <hr className="divider" style={{ margin: '8px 0' }} />
           <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 10 }}>
             Min Bid: <b style={{ color: 'var(--gold)' }}>{item.min_bid.toLocaleString()} pts</b>
@@ -254,8 +267,13 @@ export default function Auction() {
               <img src={item.thumbnail_url} alt={item.name}
                 style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 50, marginBottom: 10, border: '1px solid var(--border2)', filter: 'grayscale(50%)' }} />
             )}
-            <div className="item-name">{item.name}</div>
+            <div className="item-name">{item.name}{item.stack_size > 1 ? ` x${item.stack_size}` : ''}</div>
             <div style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>{item.description}</div>
+            {item.is_tradable && (
+              <div style={{ fontSize: 12, color: 'var(--green-light)', fontStyle: 'italic', marginBottom: 8 }}>
+                🔄 Tradable
+              </div>
+            )}
             <hr className="divider" style={{ margin: '8px 0' }} />
             <div>
               <div style={{ fontSize: 15, color: 'var(--text-dim)', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Cinzel,serif' }}>Winner</div>
@@ -349,15 +367,36 @@ export default function Auction() {
       onChange={e => setForm(f => ({ ...f, min_bid: e.target.value }))} />
   </div>
 </div>
+<div className="form-row">
+  <div className="form-group">
+    <label>Quantity</label>
+    <input
+      type="number"
+      value={form.quantity}
+      min={1}
+      max={20}
+      onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+    />
+  </div>
+  <div className="form-group">
+    <label>Stack Size</label>
+    <input
+      type="number"
+      value={form.stack_size}
+      min={1}
+      onChange={e => setForm(f => ({ ...f, stack_size: e.target.value }))}
+    />
+  </div>
+</div>
 <div className="form-group">
-  <label>Quantity</label>
-  <input
-    type="number"
-    value={form.quantity}
-    min={1}
-    max={20}
-    onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-  />
+  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+    <input
+      type="checkbox"
+      checked={!!form.is_tradable}
+      onChange={e => setForm(f => ({ ...f, is_tradable: e.target.checked }))}
+    />
+    <span>Tradable</span>
+  </label>
 </div>
           <button className="btn btn-gold btn-full" onClick={handleAdd} disabled={busy || !selectedRegistryItem}>
             {busy ? 'Listing…' : 'List for Auction'}

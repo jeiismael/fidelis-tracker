@@ -4,7 +4,7 @@ import Modal from '../components/Modal'
 import { supabase } from '../lib/supabase'
 
 export default function Admin() {
-  const { members, events, items, bids, attendance, addMember, updateMember, removeMember, removeEvent, endAuction, removeItem, showToast } = useApp()
+  const { members, events, items, bids, attendance, addMember, updateMember, removeMember, removeEvent, endAuction, removeItem, resetSeason, showToast } = useApp()
   const [tab, setTab] = useState('members')
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -118,6 +118,13 @@ export default function Admin() {
     setBusy(false); setModal(null)
   }
 
+  async function handleResetSeason() {
+    if (!confirm('Reset ALL members\' points to 0 and wipe all attendance history? This cannot be undone.')) return
+    setBusy(true)
+    await resetSeason()
+    setBusy(false)
+  }
+
   const filteredRegistry = registry.filter(i =>
     i.name.toLowerCase().includes(registrySearch.toLowerCase()) ||
     (i.description || '').toLowerCase().includes(registrySearch.toLowerCase())
@@ -141,7 +148,10 @@ export default function Admin() {
       {/* ── MEMBERS ── */}
       {tab === 'members' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+            <button className="btn btn-red btn-sm" onClick={handleResetSeason} disabled={busy}>
+              {busy ? 'Resetting…' : '⟲ Reset Points & Attendance'}
+            </button>
             <button className="btn btn-gold btn-sm" onClick={() => { setForm({ name: '', rank: 'Recruit', points: 0 }); setModal('add') }}>+ Enlist Member</button>
           </div>
           <div className="panel">

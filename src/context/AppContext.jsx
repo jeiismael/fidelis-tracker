@@ -76,6 +76,7 @@ export function AppProvider({ children }) {
   async function addMember({ name, rank, points }) {
     const { error } = await supabase.from('members').insert({ name, rank, points })
     if (error) { showToast('Error: ' + error.message); return false }
+    handleMembersChange()
     showToast(`${name} enlisted!`)
     return true
   }
@@ -83,6 +84,7 @@ export function AppProvider({ children }) {
   async function updateMember(id, updates) {
     const { error } = await supabase.from('members').update(updates).eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
+    handleMembersChange()
     showToast('Member updated')
     return true
   }
@@ -90,6 +92,7 @@ export function AppProvider({ children }) {
   async function removeMember(id) {
     const { error } = await supabase.from('members').delete().eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
+    handleMembersChange()
     showToast('Member removed')
     return true
   }
@@ -110,6 +113,7 @@ export function AppProvider({ children }) {
     const { error } = await supabase.from('members').update({ points: newPoints }).eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
     await logPoints(id, delta, type === 'add' ? 'manual_add' : type === 'sub' ? 'manual_sub' : 'manual_set', 'Manual adjustment by Admiral')
+    handleMembersChange()
     showToast(`Points updated: ${newPoints.toLocaleString()} pts`)
     return true
   }
@@ -118,6 +122,7 @@ export function AppProvider({ children }) {
   async function createEvent({ name, type, date, points_reward }) {
     const { error } = await supabase.from('events').insert({ name, type, date, points_reward })
     if (error) { showToast('Error: ' + error.message); return false }
+    handleEventsChange()
     showToast(`Event "${name}" created`)
     return true
   }
@@ -125,6 +130,7 @@ export function AppProvider({ children }) {
   async function removeEvent(id) {
     const { error } = await supabase.from('events').delete().eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
+    handleEventsChange()
     showToast('Event removed')
     return true
   }
@@ -147,6 +153,7 @@ export function AppProvider({ children }) {
       .update({ checkin_code: code, checkin_expires_at: expires })
       .eq('id', eventId)
     if (error) { showToast('Error: ' + error.message); return null }
+    handleEventsChange()
     showToast(`Check-in code generated: ${code}`)
     return code
   }
@@ -176,6 +183,7 @@ export function AppProvider({ children }) {
     })
     if (error) return { ok: false, msg: error.message }
 
+    handleAttendanceChange()
     showToast(`Checked in to "${event.name}"!`)
     return { ok: true, event }
   }
@@ -188,6 +196,7 @@ export function AppProvider({ children }) {
     } else {
       await supabase.from('attendance').insert({ event_id: eventId, member_id: memberId })
     }
+    handleAttendanceChange()
   }
 
   async function markAllAttendance(eventId) {
@@ -196,10 +205,12 @@ export function AppProvider({ children }) {
       .filter(m => !existing.includes(m.id))
       .map(m => ({ event_id: eventId, member_id: m.id }))
     if (toInsert.length) await supabase.from('attendance').insert(toInsert)
+    handleAttendanceChange()
   }
 
   async function clearAllAttendance(eventId) {
     await supabase.from('attendance').delete().eq('event_id', eventId)
+    handleAttendanceChange()
   }
 
   async function lockEvent(eventId) {
@@ -220,16 +231,49 @@ export function AppProvider({ children }) {
 
     // Lock event
     await supabase.from('events').update({ locked: true }).eq('id', eventId)
+    handleMembersChange()
+    handleEventsChange()
     showToast(`Event locked — ${attendees.length} members awarded ${event.points_reward} pts each`)
     return true
   }
 
+  // ── SEASON RESET ────────────────────────────────────────────
+  // Weekly reset: sets every member's points to 0 (with an audit log
+  // entry per member) and wipes all attendance history so the
+  // "Events Attended" count goes back to 0 as well.
+  async function resetSeason() {
+    for (const m of members) {
+      if (m.points !== 0) {
+        const { error } = await supabase.from('members').update({ points: 0 }).eq('id', m.id)
+        if (error) { showToast('Error resetting ' + m.name + ': ' + error.message); return false }
+        await logPoints(m.id, -m.points, 'manual_set', 'Weekly reset')
+      }
+    }
+
+    const { data: attRows } = await supabase.from('attendance').select('id')
+    if (attRows?.length) {
+      await supabase.from('attendance').delete().in('id', attRows.map(a => a.id))
+    }
+
+    const { data: logRows } = await supabase.from('points_log').select('id').eq('type', 'attendance')
+    if (logRows?.length) {
+      await supabase.from('points_log').delete().in('id', logRows.map(l => l.id))
+    }
+
+    handleMembersChange()
+    handleAttendanceChange()
+    showToast('Weekly reset complete — points and attendance cleared')
+    return true
+  }
+
   // ── ITEMS / AUCTIONS ────────────────────────────────────────
-  async function addItem({ name, description, min_bid, duration_ms, thumbnail_url = null }) {
+  async function addItem({ name, description, min_bid, duration_ms, thumbnail_url = null, is_tradable = false, stack_size = 1 }) {
   const { error } = await supabase.from('items').insert({
-    name, description, min_bid, status: 'pending', end_time: null, duration_ms, thumbnail_url
+    name, description, min_bid, status: 'pending', end_time: null, duration_ms, thumbnail_url,
+    is_tradable, stack_size,
   })
   if (error) { showToast('Error: ' + error.message); return false }
+  handleItemsChange()
   showToast(`"${name}" added — start the auction when ready`)
   return true
 }
@@ -244,6 +288,7 @@ async function startAuction(id) {
     .update({ status: 'active', end_time })
     .eq('id', id)
   if (error) { showToast('Error: ' + error.message); return false }
+  handleItemsChange()
   showToast(`"${item.name}" auction started!`)
   return true
 }
@@ -289,6 +334,7 @@ async function startAuction(id) {
     return false
   }
 
+  handleItemsChange()
   showToast('Auction ended')
   return true
 }
@@ -296,6 +342,7 @@ async function startAuction(id) {
   async function removeItem(id) {
     const { error } = await supabase.from('items').delete().eq('id', id)
     if (error) { showToast('Error: ' + error.message); return false }
+    handleItemsChange()
     showToast('Item removed')
     return true
   }
@@ -364,6 +411,9 @@ async function startAuction(id) {
     const { error } = await supabase.from('bids').insert({ item_id: itemId, member_id: memberId, amount })
     if (error) return { ok: false, msg: error.message }
 
+    handleBidsChange()
+    handleMembersChange()
+
     // Auto-extend: if bid placed within last 5 minutes, reset timer to 5 minutes
     if (item.end_time) {
       const timeLeft = new Date(item.end_time).getTime() - Date.now()
@@ -371,6 +421,7 @@ async function startAuction(id) {
       if (timeLeft < fiveMinutes) {
         const newEndTime = new Date(Date.now() + fiveMinutes).toISOString()
         await supabase.from('items').update({ end_time: newEndTime }).eq('id', itemId)
+        handleItemsChange()
         showToast(`Bid placed — auction extended to 5 minutes!`)
         return { ok: true }
       }
@@ -383,7 +434,7 @@ async function startAuction(id) {
   return (
     <AppContext.Provider value={{
       members, events, items, bids, attendance, loading, toast,
-      addMember, updateMember, removeMember, adjustPoints,
+      addMember, updateMember, removeMember, adjustPoints, resetSeason,
       createEvent, removeEvent, generateCheckinCode, checkinWithCode,
       toggleAttendance, markAllAttendance, clearAllAttendance, lockEvent,
       addItem, startAuction, endAuction, removeItem,
