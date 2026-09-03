@@ -243,11 +243,12 @@ export function AppProvider({ children }) {
   // "Events Attended" count goes back to 0 as well.
   async function resetSeason() {
     for (const m of members) {
-      if (m.points !== 0) {
-        const { error } = await supabase.from('members').update({ points: 0 }).eq('id', m.id)
-        if (error) { showToast('Error resetting ' + m.name + ': ' + error.message); return false }
-        await logPoints(m.id, -m.points, 'manual_set', 'Weekly reset')
-      }
+          const newPoints = Math.round(m.points / 10)
+    if (newPoints !== m.points) {
+      const { error } = await supabase.from('members').update({ points: newPoints }).eq('id', m.id)
+      if (error) { showToast('Error resetting ' + m.name + ': ' + error.message); return false }
+      await logPoints(m.id, newPoints - m.points, 'manual_set', 'Weekly reset (÷10)')
+    }
     }
 
     const { data: attRows } = await supabase.from('attendance').select('id')
@@ -262,7 +263,7 @@ export function AppProvider({ children }) {
 
     handleMembersChange()
     handleAttendanceChange()
-    showToast('Weekly reset complete — points and attendance cleared')
+    showToast('Weekly reset complete — points reduced to 1/10, attendance cleared')
     return true
   }
 
