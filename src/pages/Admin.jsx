@@ -119,7 +119,7 @@ export default function Admin() {
   }
 
   async function handleResetSeason() {
-    if (!confirm('Reset ALL members\' points to 0 and wipe all attendance history? This cannot be undone.')) return
+    if (!confirm('Reduce ALL members\' points to 1/10 (rounded) and wipe all attendance history? This cannot be undone.')) return
     setBusy(true)
     await resetSeason()
     setBusy(false)
@@ -149,8 +149,8 @@ export default function Admin() {
       {tab === 'members' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
-            <button className="btn btn-red btn-sm" onClick={handleResetSeason} disabled={busy}>
-              {busy ? 'Resetting…' : '⟲ Reset Points & Attendance'}
+           <button className="btn btn-red btn-sm" onClick={handleResetSeason} disabled={busy}>
+              {busy ? 'Resetting…' : '⟲ Decay Points ÷10 & Reset Attendance'}
             </button>
             <button className="btn btn-gold btn-sm" onClick={() => { setForm({ name: '', rank: 'Recruit', points: 0 }); setModal('add') }}>+ Enlist Member</button>
           </div>
